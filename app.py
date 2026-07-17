@@ -743,11 +743,19 @@ if len(lsf_market) > 0:
         "title": "Imóvel", "price_eur": "Preço", "price_per_sqm": "€/m²",
         "area_bruta_sqm": "Área (m²)", "tipologia": "Tipologia", "lsf_score": "Score LSF",
     })
-    lsf_display["Preço"] = lsf_display["Preço"].apply(fmt_eur)
-    lsf_display["€/m²"] = lsf_display["€/m²"].apply(lambda x: fmt_eur(x))
-    lsf_display["Área (m²)"] = lsf_display["Área (m²)"].apply(lambda x: f"{x:.0f}" if pd.notna(x) else "—")
-    lsf_display["Score LSF"] = lsf_display["Score LSF"].apply(lambda x: f"{x:.0%}")
-    st.dataframe(lsf_display, use_container_width=True, hide_index=True)
+    lsf_display["Área (m²)"] = lsf_display["Área (m²)"].apply(lambda x: round(x) if pd.notna(x) else None)
+    lsf_display["Score LSF"] = (lsf_display["Score LSF"] * 100).round(0)
+    st.dataframe(
+        lsf_display,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Preço": st.column_config.NumberColumn(format="€%d"),
+            "€/m²": st.column_config.NumberColumn(format="€%d"),
+            "Área (m²)": st.column_config.NumberColumn(format="%d"),
+            "Score LSF": st.column_config.NumberColumn(format="%d%%"),
+        },
+    )
 
 lsf_median = lsf_stats[lsf_stats["construction_type"] == "Provável LSF"]["median_psqm"].iloc[0]
 trad_median = lsf_stats[lsf_stats["construction_type"] == "Tradicional"]["median_psqm"].iloc[0]
