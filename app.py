@@ -247,12 +247,14 @@ def run_regression(df):
     agent_rows = model_df[model_df["is_agent"]]
     agent_pred = agent_rows["predicted"].mean() if len(agent_rows) > 0 else None
 
-    # Partial dependence (use P2–P98 to avoid outlier extrapolation)
+    # Partial dependence — skip binary features, use P5–P95 for continuous
     pd_data = {}
-    top_features = sorted(importances, key=importances.get, reverse=True)[:4]
-    for feat in top_features:
+    binary_feat_names = set(binary_features.keys()) | set(condition_features.keys())
+    continuous_top = [f for f in sorted(importances, key=importances.get, reverse=True)
+                      if f not in binary_feat_names][:4]
+    for feat in continuous_top:
         feat_idx = features.index(feat)
-        lo, hi = np.percentile(X[:, feat_idx], [2, 98])
+        lo, hi = np.percentile(X[:, feat_idx], [5, 95])
         vals = np.linspace(lo, hi, 25)
         pd_vals = []
         for v in vals:
@@ -493,6 +495,107 @@ O facto de as barras verdes (€/m²) e vermelhas (preço real) contarem histór
 é o ponto central desta análise.
 </div>
 """, unsafe_allow_html=True)
+
+
+st.divider()
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SECTION 2B: Condition analysis
+# ═══════════════════════════════════════════════════════════════════════════
+st.markdown("## 🏗️ Análise por estado de conservação")
+
+cond_stats = df.groupby("condition", dropna=False).agg(
+    n=("price_eur", "size"),
+    median_price=("price_eur", "median"),
+    median_psqm=("price_per_sqm", "median"),
+    mean_area=("area_bruta_sqm", "mean"),
+).reset_index()
+cond_stats = cond_stats.dropna(subset=["condition"])
+cond_stats = cond_stats.sort_values("median_psqm", ascending=False)
+
+COND_LABELS = {
+    "Empreendimento de nova construção": "Construção nova",
+    "Segunda mão/bom estado": "Bom estado",
+    "Segunda mão/para recuperar": "Para recuperar",
+}
+cond_stats["label"] = cond_stats["condition"].map(COND_LABELS)
+
+agent_condition = agent_df["condition"].iloc[0]
+
+st.markdown(f"""
+<p class="section-intro">
+O mercado divide-se em 3 segmentos por estado de conservação. As propriedades do agente
+estão classificadas no Idealista como <strong>"{COND_LABELS.get(agent_condition, agent_condition)}"</strong>,
+mas a descrição do anúncio diz "moradia de construção nova".
+</p>
+""", unsafe_allow_html=True)
+
+cond_colors = {
+    "Construção nova": "#2D7D5F",
+    "Bom estado": CHART_COLORS["ocean"],
+    "Para recuperar": CHART_COLORS["muted"],
+}
+
+fig_cond = go.Figure()
+for _, row in cond_stats.iterrows():
+    label = row["label"]
+    fig_cond.add_trace(go.Bar(
+        x=[label],
+        y=[row["median_psqm"]],
+        marker_color=cond_colors.get(label, CHART_COLORS["ocean"]),
+        text=[f"€{row['median_psqm']:,.0f}/m²".replace(",", ".")],
+        textposition="outside",
+        textfont=dict(size=13),
+        hovertemplate=(
+            f"<b>{label}</b><br>"
+            f"Mediana €/m²: €{row['median_psqm']:,.0f}<br>"
+            f"Mediana preço: €{row['median_price']:,.0f}<br>"
+            f"Nº imóveis: {row['n']}<br>"
+            f"Área média: {row['mean_area']:.0f}m²"
+            "<extra></extra>"
+        ),
+    ))
+
+fig_cond.add_hline(
+    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
+    annotation_text=f"Agente: €{agent_psqm:,.0f}/m²".replace(",", "."),
+    annotation_font_color=CHART_COLORS["terra"],
+    annotation_position="top left",
+)
+
+fig_cond.update_layout(
+    height=350,
+    showlegend=False,
+    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor="#eee"),
+    xaxis=dict(title=""),
+    margin=dict(l=10, r=10, t=20, b=40),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+)
+
+st.plotly_chart(fig_cond, use_container_width=True)
+
+cc1, cc2, cc3 = st.columns(3)
+for i, (_, row) in enumerate(cond_stats.iterrows()):
+    col = [cc1, cc2, cc3][i]
+    with col:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="label">{row["label"]}</div>
+            <div class="value">{int(row["n"])} imóveis</div>
+            <div class="detail">Mediana: {fmt_eur(row["median_price"])} · {row["mean_area"]:.0f}m² média</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+st.markdown(f"""
+<div class="finding-box info">
+💡 <strong>Onde encaixam as casas do agente?</strong> Com €{agent_psqm:,.0f}/m², o preço está
+alinhado com o segmento de <strong>construção nova</strong> (mediana €{cond_stats[cond_stats["label"]=="Construção nova"]["median_psqm"].iloc[0]:,.0f}/m²),
+apesar de estarem classificadas como "bom estado" no Idealista.
+A descrição do anúncio diz explicitamente "moradia de construção nova" —
+se a classificação estivesse correta, o preço seria competitivo dentro do seu segmento.
+</div>
+""".replace(",", "."), unsafe_allow_html=True)
 
 
 st.divider()
@@ -789,28 +892,38 @@ na conversa com o cliente ou o agente imobiliário.
 </p>
 """, unsafe_allow_html=True)
 
+cond_nova_median = cond_stats[cond_stats["label"]=="Construção nova"]["median_psqm"].iloc[0]
+
 st.markdown(f"""
 ### 1. €{agent_psqm:,.0f}/m² de área habitável
 
 Com {agent_area_habitacao:.0f}m² de área de habitação e um preço de {fmt_eur(agent_price)},
 o custo por m² habitável é **€{agent_psqm:,.0f}/m²**.
 
-### 2. Comparando com imóveis semelhantes
+### 2. Construção nova ao preço de construção nova
+
+O Idealista classifica estas casas como "bom estado", mas o próprio anúncio diz
+"moradia de construção nova". A mediana do segmento de construção nova é
+**€{cond_nova_median:,.0f}/m²** — o preço do agente (€{agent_psqm:,.0f}/m²) está dentro desse segmento.
+Se compararmos apenas com construção nova, o preço é competitivo.
+
+### 3. Comparando com imóveis semelhantes
 
 Quando filtramos por imóveis verdadeiramente comparáveis (mesma zona, tipologia T3-T5,
 bom estado, sem piscina), estas propriedades são **mais caras que {pct_comps_abs:.0f}% dos
-comparáveis** em preço absoluto.
+comparáveis** em preço absoluto — mas o filtro inclui maioritariamente segunda mão.
 
-### 3. O que valoriza (e desvaloriza) estas casas
+### 4. O que valoriza (e desvaloriza) estas casas
 
 **A favor:**
+- Construção nova com acabamentos de qualidade (pedra, Bosch, vidro temperado)
 - Proximidade à praia (~{agent_feat_vals.get("dist_beach_km", 0):.1f}km) — fator importante no mercado
 - Tipologia T{agent_rooms} — o "sweet spot" do mercado na zona
 
 **Contra:**
 - Distância a Sintra (~{agent_feat_vals.get("dist_sintra_km", 0):.1f}km) — zona intermédia, sem o premium de centralidade
 
-### 4. O preço justo segundo o modelo
+### 5. O preço justo segundo o modelo
 
 O modelo estatístico (R²={regression["r2"]:.0%}) sugere um valor de **€{regression["agent_pred"]:,.0f}/m²**
 para estas propriedades, o que daria um preço total de ~€{regression["agent_pred"] * agent_area_habitacao:,.0f}.
