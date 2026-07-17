@@ -496,30 +496,29 @@ with c4:
 st.divider()
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SECTION 2: The paradox — cheap or expensive?
+# SECTION 2: Positioning across metrics
 # ═══════════════════════════════════════════════════════════════════════════
-st.markdown("## 🔍 Barato ou caro? Depende de como se mede")
+st.markdown("## 🔍 Posição no mercado — todas as métricas")
 st.markdown("""
 <p class="section-intro">
-O mesmo imóvel pode parecer barato ou caro, dependendo da métrica usada.
-Abaixo, cada barra mostra a posição do agente: se está acima de 50%, é mais caro que a maioria.
-As barras <strong style="color:#2D7D5F">verdes</strong> são métricas onde parece barato;
-as <strong style="color:#B83D3D">vermelhas</strong>, onde é caro.
+Cada barra mostra a posição do agente face ao mercado: acima de P50
+é mais caro que a maioria. Barras <strong style="color:#B83D3D">vermelhas</strong>
+= acima da mediana; <strong style="color:#2D7D5F">verdes</strong> = abaixo.
 </p>
 """, unsafe_allow_html=True)
 
 pct_data = [
-    ("€/m² bruto — mercado total", pct_market, False),
-    ("€/m² bruto — comparáveis 3km", pct_comps_psqm, False),
-    ("Preço absoluto — comparáveis 3km", pct_comps_abs, True),
-    ("Preço absoluto — T4 comparáveis", pct_comps_abs_t4, True),
-    ("Preço por quarto", pct_per_room, True),
-    ("Preço por casa de banho", pct_per_wc, True),
+    ("€/m² (habitação) — mercado total", pct_market),
+    ("€/m² (habitação) — comparáveis 3km", pct_comps_psqm),
+    ("Preço absoluto — comparáveis 3km", pct_comps_abs),
+    ("Preço absoluto — T4 comparáveis", pct_comps_abs_t4),
+    ("Preço por quarto", pct_per_room),
+    ("Preço por casa de banho", pct_per_wc),
 ]
 
 fig_pct = go.Figure()
-for label, pct, is_expensive in reversed(pct_data):
-    color = CHART_COLORS["neg"] if is_expensive else CHART_COLORS["pos"]
+for label, pct in reversed(pct_data):
+    color = CHART_COLORS["neg"] if pct >= 50 else CHART_COLORS["pos"]
     fig_pct.add_trace(go.Bar(
         y=[label],
         x=[pct],
@@ -547,12 +546,11 @@ fig_pct.update_layout(
 
 st.plotly_chart(fig_pct, use_container_width=True)
 
-st.markdown("""
+st.markdown(f"""
 <div class="finding-box info">
-💡 <strong>Como ler este gráfico:</strong> Se a barra chega a P83, significa que este imóvel é
-mais caro que 83% dos imóveis comparáveis. Abaixo de P50, é mais barato que a maioria.
-O facto de as barras verdes (€/m²) e vermelhas (preço real) contarem histórias opostas
-é o ponto central desta análise.
+💡 <strong>Como ler:</strong> P50 = metade do mercado. Acima de P50, é mais caro que a maioria.
+Usando a área de habitação real ({agent_area_habitacao:.0f}m²), estas propriedades são
+<strong>mais caras que a maioria em todas as métricas</strong>.
 </div>
 """, unsafe_allow_html=True)
 
