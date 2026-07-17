@@ -978,6 +978,7 @@ são as propriedades-alvo. A tabela está ordenada por preço.
 
 display_comps = comps[["title", "price_eur", "price_per_sqm", "area_bruta_sqm",
                         "tipologia", "is_agent"]].copy()
+display_comps = display_comps.reset_index(drop=True)
 
 agent_mask = display_comps["is_agent"].values
 
@@ -985,21 +986,25 @@ display_comps = display_comps.rename(columns={
     "title": "Imóvel", "price_eur": "Preço", "price_per_sqm": "€/m²",
     "area_bruta_sqm": "Área (m²)", "tipologia": "Tipologia",
 })
-
-display_comps["Preço"] = display_comps["Preço"].apply(fmt_eur)
-display_comps["€/m²"] = display_comps["€/m²"].apply(lambda x: fmt_eur(x))
-display_comps["Área (m²)"] = display_comps["Área (m²)"].apply(lambda x: f"{x:.0f}" if pd.notna(x) else "—")
+display_comps["Área (m²)"] = display_comps["Área (m²)"].apply(lambda x: round(x) if pd.notna(x) else None)
 display_comps = display_comps.drop(columns=["is_agent"])
 
 def highlight_agent(row):
-    idx = row.name
-    pos = display_comps.index.get_loc(idx)
-    if agent_mask[pos]:
+    if agent_mask[row.name]:
         return ["background-color: #fde8d8; font-weight: bold"] * len(row)
     return [""] * len(row)
 
 styled = display_comps.style.apply(highlight_agent, axis=1)
-st.dataframe(styled, use_container_width=True, height=600)
+st.dataframe(
+    styled,
+    use_container_width=True,
+    height=600,
+    column_config={
+        "Preço": st.column_config.NumberColumn(format="€%d"),
+        "€/m²": st.column_config.NumberColumn(format="€%d"),
+        "Área (m²)": st.column_config.NumberColumn(format="%d"),
+    },
+)
 
 
 st.divider()
