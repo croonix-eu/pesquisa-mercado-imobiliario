@@ -307,29 +307,12 @@ def run_regression(df):
     agent_rows = model_df[model_df["is_agent"]]
     agent_pred = agent_rows["predicted"].mean() if len(agent_rows) > 0 else None
 
-    # Partial dependence — skip binary features, use P5–P95 for continuous
-    pd_data = {}
-    binary_feat_names = set(binary_features.keys()) | set(condition_features.keys())
-    continuous_top = [f for f in sorted(importances, key=importances.get, reverse=True)
-                      if f not in binary_feat_names][:4]
-    for feat in continuous_top:
-        feat_idx = features.index(feat)
-        lo, hi = np.percentile(X[:, feat_idx], [5, 95])
-        vals = np.linspace(lo, hi, 25)
-        pd_vals = []
-        for v in vals:
-            X_temp = X.copy()
-            X_temp[:, feat_idx] = v
-            pd_vals.append(model.predict(X_temp).mean())
-        pd_data[feat] = {"x": vals.tolist(), "y": pd_vals}
-
     return {
         "r2": r2,
         "n": len(model_df),
         "importances": importances,
         "predictions": model_df[["listing_id", "price_per_sqm", "predicted", "residual_pct", "is_agent"]],
         "agent_pred": agent_pred,
-        "pd_data": pd_data,
         "features": features,
     }
 
@@ -909,77 +892,7 @@ Amenidades como terraço, jardim ou construção nova pesam pouco no preço fina
 st.divider()
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SECTION 4: How each factor moves the price
-# ═══════════════════════════════════════════════════════════════════════════
-st.markdown("## 📈 Como cada fator move o preço")
-st.markdown("""
-<p class="section-intro">
-Cada gráfico mostra como o preço médio por m² muda quando um fator varia, mantendo
-tudo o resto igual. A <strong style="color:#C2703E">linha laranja tracejada</strong> marca
-a posição das propriedades do agente.
-</p>
-""", unsafe_allow_html=True)
-
-agent_feat_vals = {
-    "area_bruta_sqm": agent_area_habitacao,
-    "dist_sintra_km": df[df["is_agent"]]["dist_sintra_km"].iloc[0],
-    "dist_beach_km": df[df["is_agent"]]["dist_beach_km"].iloc[0],
-    "num_rooms": agent_rooms,
-}
-
-pd_cols = st.columns(2)
-
-for i, (feat, pd_d) in enumerate(regression["pd_data"].items()):
-    col = pd_cols[i % 2]
-    with col:
-        agent_val = agent_feat_vals.get(feat, None)
-
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=pd_d["x"],
-            y=pd_d["y"],
-            mode="lines+markers",
-            line=dict(color=CHART_COLORS["ocean"], width=2.5),
-            marker=dict(size=5),
-            name="Preço médio previsto",
-            hovertemplate="Valor: %{x:.1f}<br>€/m²: %{y:,.0f}<extra></extra>",
-        ))
-
-        if agent_val is not None:
-            fig.add_vline(
-                x=agent_val, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
-                annotation_text=f"Agente: {agent_val:.1f}",
-                annotation_font_color=CHART_COLORS["terra"],
-                annotation_font_size=11,
-            )
-
-        feat_label = FEAT_NAMES.get(feat, feat)
-        fig.update_layout(
-            title=dict(text=feat_label, font=dict(size=14)),
-            height=280,
-            showlegend=False,
-            xaxis=dict(title=feat_label, showgrid=True, gridcolor="#f0f0f0"),
-            yaxis=dict(title="€/m² previsto", showgrid=True, gridcolor="#f0f0f0"),
-            margin=dict(l=10, r=10, t=40, b=40),
-            plot_bgcolor="white",
-            paper_bgcolor="white",
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-st.markdown(f"""
-<div class="finding-box">
-🏠 <strong>Posição do agente:</strong> Com {agent_area_habitacao:.0f}m² de área habitável, estas casas
-estão no segmento médio-grande. A distância a Sintra ({agent_feat_vals.get("dist_sintra_km", 0):.1f}km)
-coloca-as numa zona intermédia. A proximidade à praia (~{agent_feat_vals.get("dist_beach_km", 0):.1f}km)
-é o principal fator a favor.
-</div>
-""", unsafe_allow_html=True)
-
-
-st.divider()
-
-# ═══════════════════════════════════════════════════════════════════════════
-# SECTION 5: Actual vs Predicted scatter
+# SECTION 4: Actual vs Predicted scatter
 # ═══════════════════════════════════════════════════════════════════════════
 st.markdown("## 🎯 Preço real vs. previsão do modelo")
 st.markdown("""
@@ -1146,6 +1059,8 @@ na conversa com o cliente ou o agente imobiliário.
 """, unsafe_allow_html=True)
 
 cond_nova_median = cond_stats[cond_stats["label"]=="Construção nova"]["median_psqm"].iloc[0]
+agent_dist_beach = df[df["is_agent"]]["dist_beach_km"].iloc[0]
+agent_dist_sintra = df[df["is_agent"]]["dist_sintra_km"].iloc[0]
 
 st.markdown(f"""
 ### 1. €{agent_psqm:,.0f}/m² de área habitável
@@ -1176,12 +1091,12 @@ comparáveis** em preço absoluto — e o filtro inclui maioritariamente segunda
 
 **A favor:**
 - Construção nova com acabamentos de qualidade (pedra, Bosch, vidro temperado)
-- Proximidade à praia (~{agent_feat_vals.get("dist_beach_km", 0):.1f}km) — fator importante no mercado
+- Proximidade à praia (~{agent_dist_beach:.1f}km) — fator importante no mercado
 - Tipologia T{agent_rooms} — o "sweet spot" do mercado na zona
 
 **Contra:**
 - Construção LSF com custo de construção inferior ao da construção tradicional
-- Distância a Sintra (~{agent_feat_vals.get("dist_sintra_km", 0):.1f}km) — zona intermédia
+- Distância a Sintra (~{agent_dist_sintra:.1f}km) — zona intermédia
 
 ### 6. O preço justo segundo o modelo
 
