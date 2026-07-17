@@ -179,6 +179,66 @@ def load_data():
 
     df["area_util_sqm"] = pd.to_numeric(df["area_util_sqm"], errors="coerce")
 
+    # --- Construction type classification (LSF vs traditional) ---
+    desc = df["description_full"].fillna("").str.lower()
+
+    # Explicit LSF keywords → high confidence
+    lsf_explicit = desc.str.contains(
+        r"lsf|light steel|steel frame|aço leve|construção seca|ossatura met[aá]lica",
+        regex=True,
+    )
+
+    # Strong LSF indicators
+    has_etics = desc.str.contains("etics", case=False)
+    has_efficiency = desc.str.contains(
+        r"eficiência energética|isolamento térmico|desempenho térmico|eficiencia energetica",
+        regex=True,
+    )
+    has_modular = desc.str.contains(r"modular|pré-fabricad|pre-fabricad", regex=True)
+
+    # Traditional construction markers (negative signal)
+    has_traditional = desc.str.contains(
+        r"betão armado|betao armado|alvenaria|tijolo|construção tradicional|pedra aparelhada",
+        regex=True,
+    )
+
+    # Is new construction (from condition or description)
+    is_new = (
+        (df["condition"] == "Empreendimento de nova construção")
+        | desc.str.contains("construção nova|construccion nueva", regex=True)
+    )
+
+    # Energy certificate A or A+
+    cert = df["energy_certificate"].fillna("").str.upper()
+    has_good_cert = cert.str.contains(r"^A\+?$", regex=True)
+
+    # Year built 2020+
+    year = pd.to_numeric(df["year_built"], errors="coerce")
+    is_recent = year >= 2020
+
+    # Build score
+    score = pd.Series(0.0, index=df.index)
+    score += lsf_explicit * 0.50
+    score += has_etics * 0.25
+    score += has_modular * 0.20
+    score += has_efficiency * 0.10
+    score += is_new * 0.10
+    score += has_good_cert * 0.05
+    score += is_recent * 0.05
+    score -= has_traditional * 0.30
+
+    score = score.clip(0, 1)
+
+    # Force agent properties to LSF (confirmed by client)
+    score.loc[df["is_agent"]] = 0.90
+
+    df["lsf_score"] = score
+    df["construction_type"] = pd.cut(
+        score,
+        bins=[-0.01, 0.10, 0.25, 1.01],
+        labels=["Tradicional", "Indeterminado", "Provável LSF"],
+    )
+
     # Override agent properties with real habitable area (223.91m²)
     # The Idealista listing says 435m² but real documentation shows:
     # lote=552m², construção bruta=253.92m², habitação=223.91m²
@@ -601,6 +661,130 @@ se a classificação estivesse correta, o preço seria competitivo dentro do seu
 st.divider()
 
 # ═══════════════════════════════════════════════════════════════════════════
+# SECTION 2C: Construction type (LSF vs traditional)
+# ═══════════════════════════════════════════════════════════════════════════
+st.markdown("## 🔩 Tipo de construção: LSF vs. Tradicional")
+
+lsf_stats = df.groupby("construction_type", observed=True).agg(
+    n=("price_eur", "size"),
+    median_price=("price_eur", "median"),
+    median_psqm=("price_per_sqm", "median"),
+    mean_area=("area_bruta_sqm", "mean"),
+).reset_index()
+
+n_lsf = int(lsf_stats[lsf_stats["construction_type"] == "Provável LSF"]["n"].iloc[0])
+n_indet = int(lsf_stats[lsf_stats["construction_type"] == "Indeterminado"]["n"].iloc[0])
+
+st.markdown(f"""
+<p class="section-intro">
+O Idealista não indica o método construtivo. Usámos análise de texto dos anúncios
+para classificar cada imóvel: menções a ETICS, eficiência energética, construção modular
+e ausência de referências a betão/alvenaria sugerem <strong>LSF (Light Steel Frame)</strong>.
+Identificámos <strong>{n_lsf} prováveis LSF</strong> e <strong>{n_indet} indeterminados</strong>
+em {len(df)} imóveis. As propriedades do agente são <strong>LSF confirmado</strong>.
+</p>
+""", unsafe_allow_html=True)
+
+ct_order = ["Provável LSF", "Indeterminado", "Tradicional"]
+ct_colors = {
+    "Provável LSF": CHART_COLORS["terra"],
+    "Indeterminado": CHART_COLORS["muted"],
+    "Tradicional": CHART_COLORS["ocean"],
+}
+
+fig_lsf = go.Figure()
+for ct in ct_order:
+    row = lsf_stats[lsf_stats["construction_type"] == ct]
+    if len(row) == 0:
+        continue
+    row = row.iloc[0]
+    fig_lsf.add_trace(go.Bar(
+        x=[ct],
+        y=[row["median_psqm"]],
+        marker_color=ct_colors[ct],
+        text=[f"€{row['median_psqm']:,.0f}/m²".replace(",", ".")],
+        textposition="outside",
+        textfont=dict(size=13),
+        hovertemplate=(
+            f"<b>{ct}</b><br>"
+            f"Mediana €/m²: €{row['median_psqm']:,.0f}<br>"
+            f"Mediana preço: €{row['median_price']:,.0f}<br>"
+            f"Nº imóveis: {int(row['n'])}<br>"
+            f"Área média: {row['mean_area']:.0f}m²"
+            "<extra></extra>"
+        ),
+    ))
+
+fig_lsf.add_hline(
+    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
+    annotation_text=f"Agente (LSF): €{agent_psqm:,.0f}/m²".replace(",", "."),
+    annotation_font_color=CHART_COLORS["terra"],
+    annotation_position="top left",
+)
+
+fig_lsf.update_layout(
+    height=350,
+    showlegend=False,
+    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor="#eee"),
+    xaxis=dict(title=""),
+    margin=dict(l=10, r=10, t=20, b=40),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+)
+
+st.plotly_chart(fig_lsf, use_container_width=True)
+
+lc1, lc2, lc3 = st.columns(3)
+for i, ct in enumerate(ct_order):
+    row = lsf_stats[lsf_stats["construction_type"] == ct]
+    if len(row) == 0:
+        continue
+    row = row.iloc[0]
+    col = [lc1, lc2, lc3][i]
+    with col:
+        style = "agent" if ct == "Provável LSF" else ""
+        st.markdown(f"""
+        <div class="metric-card {style}">
+            <div class="label">{ct}</div>
+            <div class="value">{int(row["n"])} imóveis</div>
+            <div class="detail">Mediana: {fmt_eur(row["median_price"])} · €{row["median_psqm"]:,.0f}/m²</div>
+        </div>
+        """.replace(",", "."), unsafe_allow_html=True)
+
+# Show the LSF comparable listings
+lsf_market = df[(df["construction_type"] == "Provável LSF") & (~df["is_agent"])].copy()
+if len(lsf_market) > 0:
+    st.markdown("#### Imóveis com provável construção LSF no mercado")
+    lsf_display = lsf_market[["title", "price_eur", "price_per_sqm", "area_bruta_sqm",
+                               "tipologia", "lsf_score"]].copy()
+    lsf_display = lsf_display.sort_values("lsf_score", ascending=False)
+    lsf_display = lsf_display.rename(columns={
+        "title": "Imóvel", "price_eur": "Preço", "price_per_sqm": "€/m²",
+        "area_bruta_sqm": "Área (m²)", "tipologia": "Tipologia", "lsf_score": "Score LSF",
+    })
+    lsf_display["Preço"] = lsf_display["Preço"].apply(fmt_eur)
+    lsf_display["€/m²"] = lsf_display["€/m²"].apply(lambda x: fmt_eur(x))
+    lsf_display["Área (m²)"] = lsf_display["Área (m²)"].apply(lambda x: f"{x:.0f}" if pd.notna(x) else "—")
+    lsf_display["Score LSF"] = lsf_display["Score LSF"].apply(lambda x: f"{x:.0%}")
+    st.dataframe(lsf_display, use_container_width=True, hide_index=True)
+
+lsf_median = lsf_stats[lsf_stats["construction_type"] == "Provável LSF"]["median_psqm"].iloc[0]
+trad_median = lsf_stats[lsf_stats["construction_type"] == "Tradicional"]["median_psqm"].iloc[0]
+
+st.markdown(f"""
+<div class="finding-box">
+🔩 <strong>LSF vs. Tradicional:</strong> Os imóveis com provável construção LSF têm uma mediana
+de <strong>€{lsf_median:,.0f}/m²</strong>, enquanto os tradicionais estão a <strong>€{trad_median:,.0f}/m²</strong>.
+As propriedades do agente, com €{agent_psqm:,.0f}/m², estão <strong>acima da mediana LSF</strong>.
+O tipo de construção é relevante porque o custo de construção LSF é tipicamente 15-25% inferior
+ao da construção tradicional — o que se deveria refletir no preço de venda.
+</div>
+""".replace(",", "."), unsafe_allow_html=True)
+
+
+st.divider()
+
+# ═══════════════════════════════════════════════════════════════════════════
 # SECTION 3: What drives the price
 # ═══════════════════════════════════════════════════════════════════════════
 st.markdown("## 🧠 O que determina o preço de um imóvel?")
@@ -900,20 +1084,27 @@ st.markdown(f"""
 Com {agent_area_habitacao:.0f}m² de área de habitação e um preço de {fmt_eur(agent_price)},
 o custo por m² habitável é **€{agent_psqm:,.0f}/m²**.
 
-### 2. Construção nova ao preço de construção nova
+### 2. Construção LSF — o elefante na sala
 
-O Idealista classifica estas casas como "bom estado", mas o próprio anúncio diz
-"moradia de construção nova". A mediana do segmento de construção nova é
-**€{cond_nova_median:,.0f}/m²** — o preço do agente (€{agent_psqm:,.0f}/m²) está dentro desse segmento.
-Se compararmos apenas com construção nova, o preço é competitivo.
+Estas casas são construção **LSF (Light Steel Frame)**. O custo de construção LSF é tipicamente
+**15-25% inferior** ao da construção tradicional em betão/alvenaria. No mercado, identificámos
+apenas {n_lsf} imóveis com provável construção LSF, com mediana de **€{lsf_median:,.0f}/m²**
+vs. **€{trad_median:,.0f}/m²** nos tradicionais.
+O preço do agente (€{agent_psqm:,.0f}/m²) está **acima da mediana LSF**.
 
-### 3. Comparando com imóveis semelhantes
+### 3. Classificação errada no Idealista
+
+O Idealista classifica estas casas como "bom estado", mas o anúncio diz
+"moradia de construção nova". A mediana de construção nova é **€{cond_nova_median:,.0f}/m²** —
+o preço do agente encaixa neste segmento, mas são construção nova **LSF**, não tradicional.
+
+### 4. Comparando com imóveis semelhantes
 
 Quando filtramos por imóveis verdadeiramente comparáveis (mesma zona, tipologia T3-T5,
 bom estado, sem piscina), estas propriedades são **mais caras que {pct_comps_abs:.0f}% dos
-comparáveis** em preço absoluto — mas o filtro inclui maioritariamente segunda mão.
+comparáveis** em preço absoluto — e o filtro inclui maioritariamente segunda mão tradicional.
 
-### 4. O que valoriza (e desvaloriza) estas casas
+### 5. O que valoriza (e desvaloriza) estas casas
 
 **A favor:**
 - Construção nova com acabamentos de qualidade (pedra, Bosch, vidro temperado)
@@ -921,9 +1112,10 @@ comparáveis** em preço absoluto — mas o filtro inclui maioritariamente segun
 - Tipologia T{agent_rooms} — o "sweet spot" do mercado na zona
 
 **Contra:**
-- Distância a Sintra (~{agent_feat_vals.get("dist_sintra_km", 0):.1f}km) — zona intermédia, sem o premium de centralidade
+- Construção LSF com custo de construção inferior ao da construção tradicional
+- Distância a Sintra (~{agent_feat_vals.get("dist_sintra_km", 0):.1f}km) — zona intermédia
 
-### 5. O preço justo segundo o modelo
+### 6. O preço justo segundo o modelo
 
 O modelo estatístico (R²={regression["r2"]:.0%}) sugere um valor de **€{regression["agent_pred"]:,.0f}/m²**
 para estas propriedades, o que daria um preço total de ~€{regression["agent_pred"] * agent_area_habitacao:,.0f}.
