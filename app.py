@@ -179,6 +179,17 @@ def load_data():
 
     df["area_util_sqm"] = pd.to_numeric(df["area_util_sqm"], errors="coerce")
 
+    # Override agent properties with real habitable area (223.91m²)
+    # The Idealista listing says 435m² but real documentation shows:
+    # lote=552m², construção bruta=253.92m², habitação=223.91m²
+    # Most market listings have area_bruta ≈ area_util, so we use the real
+    # habitable area for a fair comparison.
+    AGENT_AREA_HABITACAO = 223.91
+    agent_mask = df["is_agent"]
+    df.loc[agent_mask, "area_bruta_sqm"] = AGENT_AREA_HABITACAO
+    df.loc[agent_mask, "area_util_sqm"] = AGENT_AREA_HABITACAO
+    df.loc[agent_mask, "price_per_sqm"] = df.loc[agent_mask, "price_eur"] / AGENT_AREA_HABITACAO
+
     return df
 
 
@@ -285,10 +296,16 @@ comps = get_comparables(df)
 
 agent_df = df[df["is_agent"]]
 agent_price = agent_df["price_eur"].iloc[0]
-agent_area_bruta = agent_df["area_bruta_sqm"].iloc[0]
-agent_area_util = agent_df["area_util_sqm"].iloc[0] if pd.notna(agent_df["area_util_sqm"].iloc[0]) else 220
-agent_psqm = agent_df["price_per_sqm"].iloc[0]
-agent_psqm_util = agent_price / agent_area_util
+agent_area_lote = 552.0
+agent_area_construcao = 253.92
+agent_area_habitacao = 223.91
+agent_area_listed = 435.0  # what Idealista originally showed (overridden in data)
+agent_area_bruta = agent_df["area_bruta_sqm"].iloc[0]  # now = 223.91 (habitação)
+agent_area_util = agent_area_bruta
+agent_psqm = agent_df["price_per_sqm"].iloc[0]  # now based on 223.91m²
+agent_psqm_construcao = agent_price / agent_area_construcao
+agent_psqm_util = agent_psqm  # same as psqm since area_bruta = habitação
+agent_psqm_listed = agent_price / agent_area_listed  # €/m² with original 435m²
 agent_rooms = int(agent_df["num_rooms"].iloc[0])
 
 # Percentile calculations
@@ -356,7 +373,7 @@ CHART_COLORS = {
 
 st.markdown("#### 🏠 Waldyn Imobiliário")
 st.markdown("# Estas casas são caras ou baratas?")
-st.markdown("""
+st.markdown(f"""
 <p class="section-intro">
 Analisámos <strong>{len(df)} imóveis</strong> à venda na zona de Sintra/Cascais para perceber se as
 3 propriedades do agente Century 21 Nações estão bem posicionadas no mercado.
@@ -377,7 +394,7 @@ e a posição relativa quando comparamos com imóveis verdadeiramente semelhante
 </p>
 """, unsafe_allow_html=True)
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3 = st.columns(3)
 
 with c1:
     st.markdown(f"""
@@ -391,39 +408,61 @@ with c1:
 with c2:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="label">€ por m² bruto</div>
-        <div class="value">{fmt_eur(agent_psqm)}/m²</div>
-        <div class="detail">{agent_area_bruta:.0f}m² de área bruta</div>
+        <div class="label">Lote</div>
+        <div class="value">{agent_area_lote:.0f}m²</div>
+        <div class="detail">Área total do terreno</div>
     </div>
     """, unsafe_allow_html=True)
 
 with c3:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="label">€ por m² útil</div>
-        <div class="value">{fmt_eur(agent_psqm_util)}/m²</div>
-        <div class="detail">{agent_area_util:.0f}m² de área útil (real)</div>
+        <div class="label">Habitação</div>
+        <div class="value">{agent_area_habitacao:.0f}m²</div>
+        <div class="detail">Área habitável real</div>
     </div>
     """, unsafe_allow_html=True)
+
+st.markdown("#### O que muda quando usamos a área real")
+
+c4, c5, c6 = st.columns(3)
 
 with c4:
-    ratio = agent_area_util / agent_area_bruta * 100
     st.markdown(f"""
-    <div class="metric-card alert">
-        <div class="label">Área útil / bruta</div>
-        <div class="value">{ratio:.0f}%</div>
-        <div class="detail">Só metade é habitável</div>
+    <div class="metric-card">
+        <div class="label">€/m² no anúncio original (435m²)</div>
+        <div class="value">{fmt_eur(agent_psqm_listed)}/m²</div>
+        <div class="detail">Área fictícia — não existe na documentação</div>
     </div>
     """, unsafe_allow_html=True)
 
+with c5:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="label">€/m² construção ({agent_area_construcao:.0f}m²)</div>
+        <div class="value">{fmt_eur(agent_psqm_construcao)}/m²</div>
+        <div class="detail">Área bruta de construção real</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c6:
+    st.markdown(f"""
+    <div class="metric-card agent">
+        <div class="label">€/m² habitação ({agent_area_habitacao:.0f}m²)</div>
+        <div class="value">{fmt_eur(agent_psqm)}/m²</div>
+        <div class="detail">Usado em toda esta análise</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.markdown(f"""
-<div class="finding-box">
-⚠️ <strong>Atenção ao rácio de área:</strong> Estas propriedades têm {agent_area_bruta:.0f}m² de área bruta, mas apenas
-{agent_area_util:.0f}m² de área útil — só <strong>{ratio:.0f}%</strong> é realmente habitável.
-A quase totalidade dos outros imóveis no mercado reporta área bruta ≈ área útil.
-Isto significa que o preço por m² bruto (€{agent_psqm:,.0f}) é enganador —
-o custo real por m² habitável é <strong>€{agent_psqm_util:,.0f}/m²</strong>.
+<div class="finding-box danger">
+⚠️ <strong>O anúncio original dizia 435m² — mas esse número não existe.</strong>
+A documentação real mostra: lote de {agent_area_lote:.0f}m², construção bruta de {agent_area_construcao:.0f}m²,
+e habitação de {agent_area_habitacao:.0f}m². Os 435m² do Idealista não correspondem a nenhuma destas medidas.
+<br><br>
+<strong>Toda esta análise usa a área de habitação ({agent_area_habitacao:.0f}m²)</strong> como base de comparação,
+por ser a medida mais honesta e comparável com os restantes imóveis do mercado.
+O €/m² passa de €{agent_psqm_listed:,.0f} (anúncio) para <strong>€{agent_psqm:,.0f}/m²</strong> (habitação).
 </div>
 """.replace(",", "."), unsafe_allow_html=True)
 
@@ -498,13 +537,13 @@ st.divider()
 # SECTION 3: What drives the price
 # ═══════════════════════════════════════════════════════════════════════════
 st.markdown("## 🧠 O que determina o preço de um imóvel?")
-st.markdown("""
+st.markdown(f"""
 <p class="section-intro">
-Usámos um modelo estatístico (Gradient Boosting) que analisa 917 imóveis e descobre
+Usámos um modelo estatístico (Gradient Boosting) que analisa {regression["n"]} imóveis e descobre
 quais características mais influenciam o preço por m². O modelo explica
-<strong>{:.0f}%</strong> da variação de preço — uma precisão elevada.
+<strong>{regression["r2"] * 100:.0f}%</strong> da variação de preço — uma precisão elevada.
 </p>
-""".format(regression["r2"] * 100), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 sorted_imp = sorted(regression["importances"].items(), key=lambda x: x[1], reverse=True)
 
@@ -562,7 +601,7 @@ a posição das propriedades do agente.
 """, unsafe_allow_html=True)
 
 agent_feat_vals = {
-    "area_bruta_sqm": agent_area_bruta,
+    "area_bruta_sqm": agent_area_habitacao,
     "dist_sintra_km": df[df["is_agent"]]["dist_sintra_km"].iloc[0],
     "dist_beach_km": df[df["is_agent"]]["dist_beach_km"].iloc[0],
     "num_rooms": agent_rooms,
@@ -609,10 +648,10 @@ for i, (feat, pd_d) in enumerate(regression["pd_data"].items()):
 
 st.markdown(f"""
 <div class="finding-box">
-🏠 <strong>Posição do agente:</strong> Com {agent_area_bruta:.0f}m², estas casas estão na zona
-onde o €/m² cai significativamente (casas grandes = preço/m² mais baixo).
-A distância a Sintra ({agent_feat_vals.get("dist_sintra_km", 0):.1f}km) coloca-as numa zona intermédia.
-A proximidade à praia (~{agent_feat_vals.get("dist_beach_km", 0):.1f}km) é o principal fator a favor.
+🏠 <strong>Posição do agente:</strong> Com {agent_area_habitacao:.0f}m² de área habitável, estas casas
+estão no segmento médio-grande. A distância a Sintra ({agent_feat_vals.get("dist_sintra_km", 0):.1f}km)
+coloca-as numa zona intermédia. A proximidade à praia (~{agent_feat_vals.get("dist_beach_km", 0):.1f}km)
+é o principal fator a favor.
 </div>
 """, unsafe_allow_html=True)
 
@@ -683,10 +722,9 @@ if regression["agent_pred"]:
     direction = "abaixo" if diff_pct < 0 else "acima"
     st.markdown(f"""
     <div class="finding-box info">
-    📊 <strong>O modelo prevê €{regression["agent_pred"]:,.0f}/m²</strong> para estas propriedades,
-    mas o preço real é €{agent_psqm:,.0f}/m² — <strong>{abs(diff_pct):.1f}% {direction}</strong> do previsto.
-    Parece subvalorizado, mas lembre-se: o modelo usa a área bruta ({agent_area_bruta:.0f}m²),
-    não a área útil ({agent_area_util:.0f}m²). Por m² útil, o preço real é €{agent_psqm_util:,.0f}/m².
+    📊 <strong>O modelo prevê €{regression["agent_pred"]:,.0f}/m²</strong> para estas propriedades
+    (usando a área de habitação de {agent_area_habitacao:.0f}m²),
+    e o preço real é €{agent_psqm:,.0f}/m² — <strong>{abs(diff_pct):.1f}% {direction}</strong> do previsto.
     </div>
     """.replace(",", "."), unsafe_allow_html=True)
 
@@ -788,19 +826,26 @@ na conversa com o cliente ou o agente imobiliário.
 """, unsafe_allow_html=True)
 
 st.markdown(f"""
-### 1. O preço por m² é enganador
+### 1. O anúncio original diz 435m² — esse número não existe
 
-O preço de €{agent_psqm:,.0f}/m² bruto parece competitivo (abaixo da mediana do mercado).
-Mas a área bruta inclui {agent_area_bruta - agent_area_util:.0f}m² que não são habitáveis.
-O custo real por m² útil é **€{agent_psqm_util:,.0f}/m²** — quase o dobro.
+A documentação real mostra: lote {agent_area_lote:.0f}m², construção {agent_area_construcao:.0f}m²,
+habitação {agent_area_habitacao:.0f}m². Os 435m² do Idealista não correspondem a nenhuma medida.
+**Toda esta análise usa a área de habitação ({agent_area_habitacao:.0f}m²)** — a medida mais honesta
+e comparável com os restantes imóveis do mercado.
 
-### 2. Comparando com imóveis semelhantes, é caro
+### 2. €/m² real: €{agent_psqm:,.0f}/m²
 
-Quando filtramos por imóveis verdadeiramente comparáveis (mesma zona, tipologia,
-condição), estas propriedades são **mais caras que {pct_comps_abs:.0f}% dos comparáveis**
-em preço absoluto.
+Usando a área de habitação, o preço por m² é **€{agent_psqm:,.0f}/m²**.
+Com os 435m² do anúncio original, seria apenas €{agent_psqm_listed:,.0f}/m² — um número
+artificialmente baixo que não reflete a realidade.
 
-### 3. O que valoriza (e desvaloriza) estas casas
+### 3. Comparando com imóveis semelhantes
+
+Quando filtramos por imóveis verdadeiramente comparáveis (mesma zona, tipologia T3-T5,
+bom estado, sem piscina), estas propriedades são **mais caras que {pct_comps_abs:.0f}% dos
+comparáveis** em preço absoluto.
+
+### 4. O que valoriza (e desvaloriza) estas casas
 
 **A favor:**
 - Proximidade à praia (~{agent_feat_vals.get("dist_beach_km", 0):.1f}km) — fator importante no mercado
@@ -808,14 +853,11 @@ em preço absoluto.
 
 **Contra:**
 - Distância a Sintra (~{agent_feat_vals.get("dist_sintra_km", 0):.1f}km) — zona intermédia, sem o premium de centralidade
-- Área bruta grande com baixa eficiência — paga-se por m² que não se usa
 
-### 4. O preço justo
+### 5. O preço justo segundo o modelo
 
-O modelo estatístico (R²={regression["r2"]:.0%}) sugere um valor de **€{regression["agent_pred"]:,.0f}/m² bruto**, o que
-daria um preço total de ~€{regression["agent_pred"] * agent_area_bruta:,.0f}.
-No entanto, ajustando pela área útil real, um comprador informado deveria
-considerar o custo de **€{agent_psqm_util:,.0f}/m²** como referência de comparação.
+O modelo estatístico (R²={regression["r2"]:.0%}) sugere um valor de **€{regression["agent_pred"]:,.0f}/m²**
+para estas propriedades, o que daria um preço total de ~€{regression["agent_pred"] * agent_area_habitacao:,.0f}.
 """.replace(",", "."), unsafe_allow_html=True)
 
 st.markdown(f"""
