@@ -247,12 +247,13 @@ def run_regression(df):
     agent_rows = model_df[model_df["is_agent"]]
     agent_pred = agent_rows["predicted"].mean() if len(agent_rows) > 0 else None
 
-    # Partial dependence
+    # Partial dependence (use P2–P98 to avoid outlier extrapolation)
     pd_data = {}
     top_features = sorted(importances, key=importances.get, reverse=True)[:4]
     for feat in top_features:
         feat_idx = features.index(feat)
-        vals = np.linspace(X[:, feat_idx].min(), X[:, feat_idx].max(), 25)
+        lo, hi = np.percentile(X[:, feat_idx], [2, 98])
+        vals = np.linspace(lo, hi, 25)
         pd_vals = []
         for v in vals:
             X_temp = X.copy()
@@ -299,13 +300,10 @@ agent_price = agent_df["price_eur"].iloc[0]
 agent_area_lote = 552.0
 agent_area_construcao = 253.92
 agent_area_habitacao = 223.91
-agent_area_listed = 435.0  # what Idealista originally showed (overridden in data)
-agent_area_bruta = agent_df["area_bruta_sqm"].iloc[0]  # now = 223.91 (habitação)
+agent_area_bruta = agent_df["area_bruta_sqm"].iloc[0]  # = 223.91 (habitação)
 agent_area_util = agent_area_bruta
-agent_psqm = agent_df["price_per_sqm"].iloc[0]  # now based on 223.91m²
+agent_psqm = agent_df["price_per_sqm"].iloc[0]  # based on 223.91m²
 agent_psqm_construcao = agent_price / agent_area_construcao
-agent_psqm_util = agent_psqm  # same as psqm since area_bruta = habitação
-agent_psqm_listed = agent_price / agent_area_listed  # €/m² with original 435m²
 agent_rooms = int(agent_df["num_rooms"].iloc[0])
 
 # Percentile calculations
@@ -394,7 +392,7 @@ e a posição relativa quando comparamos com imóveis verdadeiramente semelhante
 </p>
 """, unsafe_allow_html=True)
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 
 with c1:
     st.markdown(f"""
@@ -417,54 +415,20 @@ with c2:
 with c3:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="label">Habitação</div>
-        <div class="value">{agent_area_habitacao:.0f}m²</div>
-        <div class="detail">Área habitável real</div>
+        <div class="label">Construção</div>
+        <div class="value">{agent_area_construcao:.0f}m²</div>
+        <div class="detail">Área bruta de construção</div>
     </div>
     """, unsafe_allow_html=True)
-
-st.markdown("#### O que muda quando usamos a área real")
-
-c4, c5, c6 = st.columns(3)
 
 with c4:
     st.markdown(f"""
-    <div class="metric-card">
-        <div class="label">€/m² no anúncio original (435m²)</div>
-        <div class="value">{fmt_eur(agent_psqm_listed)}/m²</div>
-        <div class="detail">Área fictícia — não existe na documentação</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c5:
-    st.markdown(f"""
-    <div class="metric-card">
-        <div class="label">€/m² construção ({agent_area_construcao:.0f}m²)</div>
-        <div class="value">{fmt_eur(agent_psqm_construcao)}/m²</div>
-        <div class="detail">Área bruta de construção real</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with c6:
-    st.markdown(f"""
     <div class="metric-card agent">
-        <div class="label">€/m² habitação ({agent_area_habitacao:.0f}m²)</div>
-        <div class="value">{fmt_eur(agent_psqm)}/m²</div>
-        <div class="detail">Usado em toda esta análise</div>
+        <div class="label">Habitação</div>
+        <div class="value">{agent_area_habitacao:.0f}m²</div>
+        <div class="detail">Área habitável · €{agent_psqm:,.0f}/m²</div>
     </div>
-    """, unsafe_allow_html=True)
-
-st.markdown(f"""
-<div class="finding-box danger">
-⚠️ <strong>O anúncio original dizia 435m² — mas esse número não existe.</strong>
-A documentação real mostra: lote de {agent_area_lote:.0f}m², construção bruta de {agent_area_construcao:.0f}m²,
-e habitação de {agent_area_habitacao:.0f}m². Os 435m² do Idealista não correspondem a nenhuma destas medidas.
-<br><br>
-<strong>Toda esta análise usa a área de habitação ({agent_area_habitacao:.0f}m²)</strong> como base de comparação,
-por ser a medida mais honesta e comparável com os restantes imóveis do mercado.
-O €/m² passa de €{agent_psqm_listed:,.0f} (anúncio) para <strong>€{agent_psqm:,.0f}/m²</strong> (habitação).
-</div>
-""".replace(",", "."), unsafe_allow_html=True)
+    """.replace(",", "."), unsafe_allow_html=True)
 
 
 st.divider()
@@ -826,26 +790,18 @@ na conversa com o cliente ou o agente imobiliário.
 """, unsafe_allow_html=True)
 
 st.markdown(f"""
-### 1. O anúncio original diz 435m² — esse número não existe
+### 1. €{agent_psqm:,.0f}/m² de área habitável
 
-A documentação real mostra: lote {agent_area_lote:.0f}m², construção {agent_area_construcao:.0f}m²,
-habitação {agent_area_habitacao:.0f}m². Os 435m² do Idealista não correspondem a nenhuma medida.
-**Toda esta análise usa a área de habitação ({agent_area_habitacao:.0f}m²)** — a medida mais honesta
-e comparável com os restantes imóveis do mercado.
+Com {agent_area_habitacao:.0f}m² de área de habitação e um preço de {fmt_eur(agent_price)},
+o custo por m² habitável é **€{agent_psqm:,.0f}/m²**.
 
-### 2. €/m² real: €{agent_psqm:,.0f}/m²
-
-Usando a área de habitação, o preço por m² é **€{agent_psqm:,.0f}/m²**.
-Com os 435m² do anúncio original, seria apenas €{agent_psqm_listed:,.0f}/m² — um número
-artificialmente baixo que não reflete a realidade.
-
-### 3. Comparando com imóveis semelhantes
+### 2. Comparando com imóveis semelhantes
 
 Quando filtramos por imóveis verdadeiramente comparáveis (mesma zona, tipologia T3-T5,
 bom estado, sem piscina), estas propriedades são **mais caras que {pct_comps_abs:.0f}% dos
 comparáveis** em preço absoluto.
 
-### 4. O que valoriza (e desvaloriza) estas casas
+### 3. O que valoriza (e desvaloriza) estas casas
 
 **A favor:**
 - Proximidade à praia (~{agent_feat_vals.get("dist_beach_km", 0):.1f}km) — fator importante no mercado
@@ -854,7 +810,7 @@ comparáveis** em preço absoluto.
 **Contra:**
 - Distância a Sintra (~{agent_feat_vals.get("dist_sintra_km", 0):.1f}km) — zona intermédia, sem o premium de centralidade
 
-### 5. O preço justo segundo o modelo
+### 4. O preço justo segundo o modelo
 
 O modelo estatístico (R²={regression["r2"]:.0%}) sugere um valor de **€{regression["agent_pred"]:,.0f}/m²**
 para estas propriedades, o que daria um preço total de ~€{regression["agent_pred"] * agent_area_habitacao:,.0f}.
