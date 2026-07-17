@@ -781,6 +781,77 @@ ao da construção tradicional — o que se deveria refletir no preço de venda.
 </div>
 """.replace(",", "."), unsafe_allow_html=True)
 
+# --- Decompose "construção nova" by construction type ---
+st.markdown("#### O argumento da construção nova — decomposto")
+
+desc_col = df["description_full"].fillna("").str.lower()
+is_new_flag = (
+    (df["condition"] == "Empreendimento de nova construção")
+    | desc_col.str.contains("construção nova", regex=False)
+)
+nova_df = df[is_new_flag & ~df["is_agent"]].copy()
+
+nova_trad = nova_df[nova_df["construction_type"] == "Tradicional"]
+nova_lsf_indet = nova_df[nova_df["construction_type"].isin(["Provável LSF", "Indeterminado"])]
+
+nova_trad_med = nova_trad["price_per_sqm"].median() if len(nova_trad) > 0 else 0
+nova_lsf_med = nova_lsf_indet["price_per_sqm"].median() if len(nova_lsf_indet) > 0 else 0
+nova_all_med = nova_df["price_per_sqm"].median() if len(nova_df) > 0 else 0
+
+fig_nova = go.Figure()
+
+bars = [
+    ("Construção nova\n(todas)", nova_all_med, len(nova_df), CHART_COLORS["muted"]),
+    ("Nova — tradicional", nova_trad_med, len(nova_trad), CHART_COLORS["ocean"]),
+    ("Nova — LSF / indet.", nova_lsf_med, len(nova_lsf_indet), CHART_COLORS["terra"]),
+]
+
+for label, med, n, color in bars:
+    fig_nova.add_trace(go.Bar(
+        x=[label],
+        y=[med],
+        marker_color=color,
+        text=[f"€{med:,.0f}/m²\n(n={n})".replace(",", ".")],
+        textposition="outside",
+        textfont=dict(size=12),
+        hovertemplate=f"<b>{label}</b><br>Mediana: €{med:,.0f}/m²<br>Nº imóveis: {n}<extra></extra>",
+    ))
+
+fig_nova.add_hline(
+    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
+    annotation_text=f"Agente (LSF): €{agent_psqm:,.0f}/m²".replace(",", "."),
+    annotation_font_color=CHART_COLORS["terra"],
+    annotation_position="top right",
+)
+
+fig_nova.update_layout(
+    height=380,
+    showlegend=False,
+    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor="#eee"),
+    xaxis=dict(title=""),
+    margin=dict(l=10, r=10, t=20, b=60),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+)
+
+st.plotly_chart(fig_nova, use_container_width=True)
+
+pct_above_lsf = ((agent_psqm - nova_lsf_med) / nova_lsf_med * 100) if nova_lsf_med > 0 else 0
+
+st.markdown(f"""
+<div class="finding-box danger">
+⚠️ <strong>O argumento "está abaixo da mediana de construção nova" é enganador.</strong>
+A mediana de construção nova (€{nova_all_med:,.0f}/m²) mistura:
+<ul style="margin: 0.5rem 0;">
+<li><strong>{len(nova_trad)} imóveis de construção tradicional</strong> (betão/alvenaria) a €{nova_trad_med:,.0f}/m² — casas mais caras, que puxam a mediana para cima</li>
+<li><strong>{len(nova_lsf_indet)} imóveis LSF / indeterminado</strong> a €{nova_lsf_med:,.0f}/m² — o segmento real de comparação</li>
+</ul>
+O agente cobra €{agent_psqm:,.0f}/m² por construção LSF — <strong>{pct_above_lsf:.0f}% acima</strong>
+da mediana de construção nova LSF/indeterminada.
+Comparar com a mediana geral de construção nova é comparar LSF com betão armado.
+</div>
+""".replace(",", "."), unsafe_allow_html=True)
+
 
 st.divider()
 
@@ -1086,17 +1157,16 @@ o custo por m² habitável é **€{agent_psqm:,.0f}/m²**.
 
 ### 2. Construção LSF — o elefante na sala
 
-Estas casas são construção **LSF (Light Steel Frame)**. O custo de construção LSF é tipicamente
-**15-25% inferior** ao da construção tradicional em betão/alvenaria. No mercado, identificámos
-apenas {n_lsf} imóveis com provável construção LSF, com mediana de **€{lsf_median:,.0f}/m²**
-vs. **€{trad_median:,.0f}/m²** nos tradicionais.
-O preço do agente (€{agent_psqm:,.0f}/m²) está **acima da mediana LSF**.
+Estas casas são construção **LSF (Light Steel Frame)**, com custo de construção tipicamente
+**15-25% inferior** ao betão/alvenaria. No mercado, identificámos {n_lsf} imóveis com
+provável construção LSF, com mediana de **€{lsf_median:,.0f}/m²** vs. **€{trad_median:,.0f}/m²**
+nos tradicionais. O preço do agente (€{agent_psqm:,.0f}/m²) está **acima da mediana LSF**.
 
-### 3. Classificação errada no Idealista
+### 3. O argumento da "construção nova" não cola
 
-O Idealista classifica estas casas como "bom estado", mas o anúncio diz
-"moradia de construção nova". A mediana de construção nova é **€{cond_nova_median:,.0f}/m²** —
-o preço do agente encaixa neste segmento, mas são construção nova **LSF**, não tradicional.
+A mediana geral de construção nova é €{cond_nova_median:,.0f}/m² — mas mistura betão (€{nova_trad_med:,.0f}/m²)
+com LSF (€{nova_lsf_med:,.0f}/m²). Quando se compara apenas com construção nova LSF/indeterminada,
+o agente está **{pct_above_lsf:.0f}% acima** da mediana.
 
 ### 4. Comparando com imóveis semelhantes
 
