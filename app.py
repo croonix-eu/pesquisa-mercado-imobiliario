@@ -419,7 +419,7 @@ st.markdown("# Estas casas são caras ou baratas?")
 st.markdown(f"""
 <p class="section-intro">
 Analisámos <strong>{len(df)} imóveis</strong> à venda na zona de Sintra/Cascais para perceber se as
-3 propriedades do agente Century 21 Nações estão bem posicionadas no mercado.
+3 propriedades-alvo (Century 21 Nações) estão bem posicionadas no mercado.
 A resposta depende de <em>como</em> se mede — e essa é a descoberta mais importante desta análise.
 </p>
 """, unsafe_allow_html=True)
@@ -432,7 +432,7 @@ st.divider()
 st.markdown("## 📊 Os números-chave")
 st.markdown("""
 <p class="section-intro">
-Três números que resumem a situação. O preço pedido, o que o modelo estatístico prevê,
+Três números que resumem a situação das propriedades-alvo. O preço pedido, o que o modelo estatístico prevê,
 e a posição relativa quando comparamos com imóveis verdadeiramente semelhantes.
 </p>
 """, unsafe_allow_html=True)
@@ -444,7 +444,7 @@ with c1:
     <div class="metric-card agent">
         <div class="label">Preço pedido</div>
         <div class="value">{fmt_eur(agent_price)}</div>
-        <div class="detail">3 moradias T{agent_rooms} · Century 21</div>
+        <div class="detail">3 moradias T{agent_rooms} · Propriedades-alvo</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -484,7 +484,7 @@ st.divider()
 st.markdown("## 🔍 Posição no mercado — todas as métricas")
 st.markdown("""
 <p class="section-intro">
-Cada barra mostra a posição do agente face ao mercado: acima de P50
+Cada barra mostra a posição das propriedades-alvo face ao mercado: acima de P50
 é mais caro que a maioria. Barras <strong style="color:#B83D3D">vermelhas</strong>
 = acima da mediana; <strong style="color:#2D7D5F">verdes</strong> = abaixo.
 </p>
@@ -565,7 +565,7 @@ agent_condition = agent_df["condition"].iloc[0]
 
 st.markdown(f"""
 <p class="section-intro">
-O mercado divide-se em 3 segmentos por estado de conservação. As propriedades do agente
+O mercado divide-se em 3 segmentos por estado de conservação. As propriedades-alvo
 estão classificadas no Idealista como <strong>"{COND_LABELS.get(agent_condition, agent_condition)}"</strong>,
 mas a descrição do anúncio diz "moradia de construção nova".
 </p>
@@ -599,7 +599,7 @@ for _, row in cond_stats.iterrows():
 
 fig_cond.add_hline(
     y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
-    annotation_text=f"Agente: €{agent_psqm:,.0f}/m²".replace(",", "."),
+    annotation_text=f"Alvo: €{agent_psqm:,.0f}/m²".replace(",", "."),
     annotation_font_color=CHART_COLORS["terra"],
     annotation_position="top left",
 )
@@ -630,7 +630,7 @@ for i, (_, row) in enumerate(cond_stats.iterrows()):
 
 st.markdown(f"""
 <div class="finding-box info">
-💡 <strong>Onde encaixam as casas do agente?</strong> Com €{agent_psqm:,.0f}/m², o preço está
+💡 <strong>Onde encaixam as propriedades-alvo?</strong> Com €{agent_psqm:,.0f}/m², o preço está
 alinhado com o segmento de <strong>construção nova</strong> (mediana €{cond_stats[cond_stats["label"]=="Construção nova"]["median_psqm"].iloc[0]:,.0f}/m²),
 apesar de estarem classificadas como "bom estado" no Idealista.
 A descrição do anúncio diz explicitamente "moradia de construção nova" —
@@ -662,7 +662,7 @@ O Idealista não indica o método construtivo. Usámos análise de texto dos an�
 para classificar cada imóvel: menções a ETICS, eficiência energética, construção modular
 e ausência de referências a betão/alvenaria sugerem <strong>LSF (Light Steel Frame)</strong>.
 Identificámos <strong>{n_lsf} prováveis LSF</strong> e <strong>{n_indet} indeterminados</strong>
-em {len(df)} imóveis. As propriedades do agente são <strong>LSF confirmado</strong>.
+em {len(df)} imóveis. As propriedades-alvo são <strong>LSF confirmado</strong> pelo construtor.
 </p>
 """, unsafe_allow_html=True)
 
@@ -698,7 +698,7 @@ for ct in ct_order:
 
 fig_lsf.add_hline(
     y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
-    annotation_text=f"Agente (LSF): €{agent_psqm:,.0f}/m²".replace(",", "."),
+    annotation_text=f"Alvo (LSF): €{agent_psqm:,.0f}/m²".replace(",", "."),
     annotation_font_color=CHART_COLORS["terra"],
     annotation_position="top left",
 )
@@ -756,7 +756,7 @@ st.markdown(f"""
 <div class="finding-box">
 🔩 <strong>LSF vs. Tradicional:</strong> Os imóveis com provável construção LSF têm uma mediana
 de <strong>€{lsf_median:,.0f}/m²</strong>, enquanto os tradicionais estão a <strong>€{trad_median:,.0f}/m²</strong>.
-As propriedades do agente, com €{agent_psqm:,.0f}/m², estão <strong>acima da mediana LSF</strong>.
+As propriedades-alvo, com €{agent_psqm:,.0f}/m², estão <strong>acima da mediana LSF</strong>.
 O tipo de construção é relevante porque o custo de construção LSF é tipicamente 15-25% inferior
 ao da construção tradicional — o que se deveria refletir no preço de venda.
 </div>
@@ -800,7 +800,7 @@ for label, med, n, color in bars:
 
 fig_nova.add_hline(
     y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
-    annotation_text=f"Agente (LSF): €{agent_psqm:,.0f}/m²".replace(",", "."),
+    annotation_text=f"Alvo (LSF): €{agent_psqm:,.0f}/m²".replace(",", "."),
     annotation_font_color=CHART_COLORS["terra"],
     annotation_position="top right",
 )
@@ -827,7 +827,7 @@ A mediana de construção nova (€{nova_all_med:,.0f}/m²) mistura:
 <li><strong>{len(nova_trad)} imóveis de construção tradicional</strong> (betão/alvenaria) a €{nova_trad_med:,.0f}/m² — casas mais caras, que puxam a mediana para cima</li>
 <li><strong>{len(nova_lsf_indet)} imóveis LSF / indeterminado</strong> a €{nova_lsf_med:,.0f}/m² — o segmento real de comparação</li>
 </ul>
-O agente cobra €{agent_psqm:,.0f}/m² por construção LSF — <strong>{pct_above_lsf:.0f}% acima</strong>
+O construtor cobra €{agent_psqm:,.0f}/m² por construção LSF — <strong>{pct_above_lsf:.0f}% acima</strong>
 da mediana de construção nova LSF/indeterminada.
 Comparar com a mediana geral de construção nova é comparar LSF com betão armado.
 </div>
@@ -899,7 +899,7 @@ st.markdown("""
 <p class="section-intro">
 Cada ponto é um imóvel. Se está <strong>acima</strong> da linha diagonal, o preço real é superior
 ao que o modelo prevê (sobrevalorizado). Se está <strong>abaixo</strong>, o preço é inferior ao previsto
-(subvalorizado). Os pontos <strong style="color:#C2703E">laranjas</strong> são as propriedades do agente.
+(subvalorizado). Os pontos <strong style="color:#C2703E">laranjas</strong> são as propriedades-alvo.
 </p>
 """, unsafe_allow_html=True)
 
@@ -924,8 +924,8 @@ fig_scatter.add_trace(go.Scatter(
     y=agents["price_per_sqm"],
     mode="markers",
     marker=dict(color=CHART_COLORS["terra"], size=14, line=dict(color="white", width=2)),
-    name="Agente (Century 21)",
-    hovertemplate="<b>AGENTE</b><br>Previsão: €%{x:,.0f}/m²<br>Real: €%{y:,.0f}/m²<br>Diferença: %{customdata:.1f}%<extra></extra>",
+    name="Propriedades-alvo",
+    hovertemplate="<b>ALVO</b><br>Previsão: €%{x:,.0f}/m²<br>Real: €%{y:,.0f}/m²<br>Diferença: %{customdata:.1f}%<extra></extra>",
     customdata=agents["residual_pct"],
 ))
 
@@ -972,7 +972,7 @@ st.markdown(f"""
 <p class="section-intro">
 Encontrámos <strong>{len(comps)} imóveis</strong> verdadeiramente comparáveis: dentro de 3km,
 tipologia T3 a T5, em bom estado, sem piscina. As linhas <strong style="color:#C2703E">destacadas</strong>
-são as propriedades do agente. A tabela está ordenada por preço.
+são as propriedades-alvo. A tabela está ordenada por preço.
 </p>
 """, unsafe_allow_html=True)
 
@@ -1011,12 +1011,12 @@ st.markdown("## 🗺️ Mapa de comparáveis")
 st.markdown("""
 <p class="section-intro">
 Localização geográfica dos imóveis comparáveis. Os pontos
-<strong style="color:#C2703E">laranjas grandes</strong> são as propriedades do agente.
+<strong style="color:#C2703E">laranjas grandes</strong> são as propriedades-alvo.
 </p>
 """, unsafe_allow_html=True)
 
 map_data = comps[["latitude", "longitude", "price_eur", "title", "is_agent"]].copy()
-map_data["Tipo"] = map_data["is_agent"].apply(lambda x: "Agente (Century 21)" if x else "Mercado")
+map_data["Tipo"] = map_data["is_agent"].apply(lambda x: "Propriedades-alvo" if x else "Mercado")
 map_data["size"] = map_data["is_agent"].apply(lambda x: 15 if x else 5)
 
 scatter_fn = getattr(px, "scatter_map", None) or getattr(px, "scatter_mapbox")
@@ -1028,7 +1028,7 @@ fig_map = scatter_fn(
     lon="longitude",
     size="size",
     color="Tipo",
-    color_discrete_map={"Agente (Century 21)": CHART_COLORS["terra"], "Mercado": CHART_COLORS["ocean"]},
+    color_discrete_map={"Propriedades-alvo": CHART_COLORS["terra"], "Mercado": CHART_COLORS["ocean"]},
     hover_name="title",
     hover_data={"price_eur": ":,.0f", "Tipo": False, "size": False,
                 "latitude": False, "longitude": False},
@@ -1054,7 +1054,7 @@ st.markdown("## 📋 Conclusões — o que dizer ao cliente")
 st.markdown("""
 <p class="section-intro">
 As conclusões desta análise, escritas em linguagem clara para usar diretamente
-na conversa com o cliente ou o agente imobiliário.
+na conversa com o cliente.
 </p>
 """, unsafe_allow_html=True)
 
@@ -1073,13 +1073,13 @@ o custo por m² habitável é **€{agent_psqm:,.0f}/m²**.
 Estas casas são construção **LSF (Light Steel Frame)**, com custo de construção tipicamente
 **15-25% inferior** ao betão/alvenaria. No mercado, identificámos {n_lsf} imóveis com
 provável construção LSF, com mediana de **€{lsf_median:,.0f}/m²** vs. **€{trad_median:,.0f}/m²**
-nos tradicionais. O preço do agente (€{agent_psqm:,.0f}/m²) está **acima da mediana LSF**.
+nos tradicionais. O preço-alvo (€{agent_psqm:,.0f}/m²) está **acima da mediana LSF**.
 
 ### 3. O argumento da "construção nova" não cola
 
 A mediana geral de construção nova é €{cond_nova_median:,.0f}/m² — mas mistura betão (€{nova_trad_med:,.0f}/m²)
 com LSF (€{nova_lsf_med:,.0f}/m²). Quando se compara apenas com construção nova LSF/indeterminada,
-o agente está **{pct_above_lsf:.0f}% acima** da mediana.
+o construtor está **{pct_above_lsf:.0f}% acima** da mediana.
 
 ### 4. Comparando com imóveis semelhantes
 
