@@ -204,7 +204,7 @@ def get_comparables(df):
     nearby = df_c[df_c["dist_to_agent"] <= 3.0].copy()
     nearby = nearby[nearby["num_rooms"].between(3, 5)]
     nearby = nearby[nearby["condition"] == "Segunda mão/bom estado"]
-    return nearby.sort_values("price_per_sqm")
+    return nearby.sort_values("price_per_sqm", ascending=False)
 
 
 # ---------------------------------------------------------------------------
@@ -706,7 +706,7 @@ def main():
     agent_comps = comps[comps["is_agent"]]
     if len(agent_comps) > 0 and not agent_comps.index.isin(comps_display.index).all():
         comps_display = pd.concat([comps_display, agent_comps]).drop_duplicates(subset=["listing_id"])
-        comps_display = comps_display.sort_values("price_per_sqm")
+        comps_display = comps_display.sort_values("price_per_sqm", ascending=False)
 
     comp_rows = ""
     for _, row in comps_display.iterrows():

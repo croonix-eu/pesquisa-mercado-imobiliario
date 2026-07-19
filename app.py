@@ -329,7 +329,7 @@ def get_comparables(df):
     nearby = nearby[nearby["num_rooms"].between(3, 5)]
     nearby = nearby[nearby["condition"] == "Segunda mão/bom estado"]
 
-    return nearby.sort_values("price_per_sqm")
+    return nearby.sort_values("price_per_sqm", ascending=False)
 
 
 # ---------------------------------------------------------------------------
