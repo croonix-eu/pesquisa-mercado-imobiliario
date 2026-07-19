@@ -328,9 +328,8 @@ def get_comparables(df):
     nearby = df_c[df_c["dist_to_agent"] <= 3.0].copy()
     nearby = nearby[nearby["num_rooms"].between(3, 5)]
     nearby = nearby[nearby["condition"] == "Segunda mão/bom estado"]
-    nearby = nearby[nearby["has_pool"] != True]  # noqa: E712
 
-    return nearby.sort_values("price_eur")
+    return nearby.sort_values("price_per_sqm")
 
 
 # ---------------------------------------------------------------------------
@@ -979,8 +978,8 @@ st.markdown("## 🏘️ Propriedades comparáveis")
 st.markdown(f"""
 <p class="section-intro">
 Encontrámos <strong>{len(comps)} imóveis</strong> verdadeiramente comparáveis: dentro de 3km,
-tipologia T3 a T5, em bom estado, sem piscina. As linhas <strong style="color:#C2703E">destacadas</strong>
-são as propriedades-alvo. A tabela está ordenada por preço.
+tipologia T3 a T5, em bom estado. As linhas <strong style="color:#C2703E">destacadas</strong>
+são as propriedades-alvo. A tabela está ordenada por €/m².
 </p>
 """, unsafe_allow_html=True)
 
@@ -1097,7 +1096,7 @@ o construtor está **{pct_above_lsf:.0f}% acima** da mediana.
 ### 4. Comparando com imóveis semelhantes
 
 Quando filtramos por imóveis verdadeiramente comparáveis (mesma zona, tipologia T3-T5,
-bom estado, sem piscina), estas propriedades são **mais caras que {pct_comps_abs:.0f}% dos
+bom estado), estas propriedades são **mais caras que {pct_comps_abs:.0f}% dos
 comparáveis** em preço absoluto — e o filtro inclui maioritariamente segunda mão tradicional.
 
 ### 5. O que valoriza (e desvaloriza) estas casas

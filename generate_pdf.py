@@ -204,8 +204,7 @@ def get_comparables(df):
     nearby = df_c[df_c["dist_to_agent"] <= 3.0].copy()
     nearby = nearby[nearby["num_rooms"].between(3, 5)]
     nearby = nearby[nearby["condition"] == "Segunda mão/bom estado"]
-    nearby = nearby[nearby["has_pool"] != True]  # noqa: E712
-    return nearby.sort_values("price_eur")
+    return nearby.sort_values("price_per_sqm")
 
 
 # ---------------------------------------------------------------------------
@@ -447,7 +446,7 @@ def build_html(sections):
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-    table.comps td:first-child { white-space: normal; word-wrap: break-word; }
+    table.comps td:first-child { white-space: nowrap; }
     table.comps tr.agent { background: #fde8d8; font-weight: 600; }
 
     .conclusions h3 { color: #1B5E8C; }
@@ -700,9 +699,17 @@ def main():
         </div>
         """)
 
-    # Comparables table
+    # Comparables table — limit to 1 page
+    MAX_TABLE_ROWS = 22
+    comps_display = comps.head(MAX_TABLE_ROWS) if len(comps) > MAX_TABLE_ROWS else comps
+    # Always include agent rows even if they'd be cut
+    agent_comps = comps[comps["is_agent"]]
+    if len(agent_comps) > 0 and not agent_comps.index.isin(comps_display.index).all():
+        comps_display = pd.concat([comps_display, agent_comps]).drop_duplicates(subset=["listing_id"])
+        comps_display = comps_display.sort_values("price_per_sqm")
+
     comp_rows = ""
-    for _, row in comps.iterrows():
+    for _, row in comps_display.iterrows():
         cls = ' class="agent"' if row["is_agent"] else ""
         comp_rows += f"""<tr{cls}>
             <td>{row['title'][:60]}</td>
@@ -712,10 +719,12 @@ def main():
             <td>{row['tipologia']}</td>
         </tr>\n"""
 
+    truncated_note = f" (mostrando {len(comps_display)} de {len(comps)})" if len(comps) > MAX_TABLE_ROWS else ""
+
     sections.append(f"""
     <div class="page-break"></div>
-    <h2>Propriedades comparáveis ({len(comps)} imóveis)</h2>
-    <p>Raio 3km, T3–T5, bom estado, sem piscina. Linhas destacadas = propriedades-alvo.</p>
+    <h2>Propriedades comparáveis ({len(comps)} imóveis){truncated_note}</h2>
+    <p>Raio 3km, T3–T5, bom estado. Ordenado por €/m². Linhas destacadas = propriedades-alvo.</p>
     <table class="comps">
     <colgroup>
         <col class="col-title"><col class="col-price"><col class="col-psqm">
@@ -751,7 +760,7 @@ def main():
     Quando se compara só com LSF/indeterminada, o construtor está <strong>{pct_above_lsf:.0f}% acima</strong>.</p>
 
     <h3>4. Comparando com imóveis semelhantes</h3>
-    <p>Filtrando por comparáveis reais (3km, T3-T5, bom estado, sem piscina), estas propriedades são
+    <p>Filtrando por comparáveis reais (3km, T3-T5, bom estado), estas propriedades são
     <strong>mais caras que {pct_comps_abs:.0f}%</strong> dos comparáveis em preço absoluto.</p>
 
     <h3>5. O que valoriza (e desvaloriza) estas casas</h3>
