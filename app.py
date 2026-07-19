@@ -57,79 +57,93 @@ def fmt_pct(v):
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
     .block-container { max-width: 1100px; padding-top: 2rem; }
 
-    h1, h2, h3 { font-family: 'Inter', system-ui, sans-serif !important; }
+    h1, h2, h3 {
+        font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif !important;
+        color: #FFFFFF !important;
+    }
+    h1 { letter-spacing: -0.02em; }
+    h2 { letter-spacing: -0.01em; }
 
     .metric-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 12px;
-        padding: 1.2rem 1.5rem;
-        border-left: 4px solid #1B5E8C;
+        background: #0F2424;
+        border-radius: 10px;
+        padding: 1.1rem 1.3rem;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-left: 3px solid #7B6FF7;
         margin-bottom: 0.5rem;
     }
     .metric-card.agent {
-        border-left-color: #C2703E;
-        background: linear-gradient(135deg, #fef3ec 0%, #fde8d8 100%);
+        border-left-color: #F0A030;
+        background: #0F2424;
     }
     .metric-card.alert {
-        border-left-color: #B83D3D;
-        background: linear-gradient(135deg, #fef2f2 0%, #fde8e8 100%);
+        border-left-color: #E8624A;
     }
     .metric-card .label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #6c757d;
+        letter-spacing: 0.08em;
+        color: rgba(255,255,255,0.4);
         margin-bottom: 0.25rem;
+        font-family: 'Inter', sans-serif;
     }
     .metric-card .value {
-        font-size: 1.8rem;
+        font-size: 1.7rem;
         font-weight: 700;
-        color: #1a1a2e;
+        color: #FFFFFF;
         line-height: 1.1;
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
     }
     .metric-card .detail {
-        font-size: 0.8rem;
-        color: #6c757d;
+        font-size: 0.78rem;
+        color: rgba(255,255,255,0.5);
         margin-top: 0.25rem;
     }
 
     .finding-box {
-        background: #fff3cd;
-        border: 1px solid #ffc107;
+        background: rgba(240,160,48,0.08);
+        border: 1px solid rgba(240,160,48,0.25);
         border-radius: 8px;
         padding: 1rem 1.25rem;
         margin: 1rem 0;
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         line-height: 1.6;
+        color: rgba(255,255,255,0.82);
     }
     .finding-box.info {
-        background: #e8f4f8;
-        border-color: #1B5E8C;
+        background: rgba(123,111,247,0.08);
+        border-color: rgba(123,111,247,0.25);
     }
     .finding-box.danger {
-        background: #fde8e8;
-        border-color: #B83D3D;
+        background: rgba(232,98,74,0.08);
+        border-color: rgba(232,98,74,0.3);
     }
 
     .section-intro {
-        font-size: 1.05rem;
-        color: #495057;
+        font-size: 1rem;
+        color: rgba(255,255,255,0.62);
         line-height: 1.7;
         margin-bottom: 1.5rem;
         max-width: 800px;
     }
 
     div[data-testid="stMetric"] {
-        background: #f8f9fa;
+        background: #0F2424;
         border-radius: 8px;
         padding: 0.75rem;
-        border: 1px solid #dee2e6;
+        border: 1px solid rgba(255,255,255,0.08);
     }
+
+    /* Streamlit divider */
+    hr { border-color: rgba(255,255,255,0.08) !important; }
+
+    /* Dataframe dark overrides */
+    .stDataFrame { border-radius: 8px; overflow: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -400,13 +414,16 @@ FEAT_NAMES = {
 }
 
 CHART_COLORS = {
-    "ocean": "#1B5E8C",
-    "terra": "#C2703E",
-    "pos": "#2D7D5F",
-    "neg": "#B83D3D",
-    "muted": "#8c8c8c",
-    "light_bg": "#f0f2f6",
+    "purple": "#7B6FF7",
+    "teal": "#2CC4A8",
+    "amber": "#F0A030",
+    "coral": "#E8624A",
+    "muted": "rgba(255,255,255,0.25)",
 }
+
+CHART_FONT = dict(family="Inter, sans-serif", color="rgba(255,255,255,0.62)", size=12)
+CHART_GRID = "rgba(255,255,255,0.06)"
+CHART_BG = "rgba(0,0,0,0)"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -484,8 +501,8 @@ st.markdown("## 🔍 Posição no mercado — todas as métricas")
 st.markdown("""
 <p class="section-intro">
 Cada barra mostra a posição das propriedades-alvo face ao mercado: acima de P50
-é mais caro que a maioria. Barras <strong style="color:#B83D3D">vermelhas</strong>
-= acima da mediana; <strong style="color:#2D7D5F">verdes</strong> = abaixo.
+é mais caro que a maioria. Barras <strong style="color:#E8624A">coral</strong>
+= acima da mediana; <strong style="color:#2CC4A8">teal</strong> = abaixo.
 </p>
 """, unsafe_allow_html=True)
 
@@ -500,30 +517,32 @@ pct_data = [
 
 fig_pct = go.Figure()
 for label, pct in reversed(pct_data):
-    color = CHART_COLORS["neg"] if pct >= 50 else CHART_COLORS["pos"]
+    color = CHART_COLORS["coral"] if pct >= 50 else CHART_COLORS["teal"]
     fig_pct.add_trace(go.Bar(
         y=[label],
         x=[pct],
         orientation="h",
         marker_color=color,
-        opacity=0.8,
+        opacity=0.85,
         text=[f"P{pct:.0f}"],
         textposition="outside",
         textfont=dict(size=13, color=color),
         hovertemplate=f"<b>{label}</b><br>Percentil: {pct:.0f}<br>Mais caro que {pct:.0f}% dos comparáveis<extra></extra>",
     ))
 
-fig_pct.add_vline(x=50, line_dash="dot", line_color="#999", line_width=1,
-                  annotation_text="Mediana", annotation_position="top")
+fig_pct.add_vline(x=50, line_dash="dot", line_color="rgba(255,255,255,0.25)", line_width=1,
+                  annotation_text="Mediana", annotation_position="top",
+                  annotation_font_color="rgba(255,255,255,0.5)")
 
 fig_pct.update_layout(
     height=320,
     showlegend=False,
-    xaxis=dict(range=[0, 105], title="Percentil (P50 = metade do mercado)", showgrid=True, gridcolor="#eee"),
+    font=CHART_FONT,
+    xaxis=dict(range=[0, 105], title="Percentil (P50 = metade do mercado)", showgrid=True, gridcolor=CHART_GRID),
     yaxis=dict(automargin=True),
     margin=dict(l=10, r=40, t=20, b=40),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
+    plot_bgcolor=CHART_BG,
+    paper_bgcolor=CHART_BG,
 )
 
 st.plotly_chart(fig_pct, use_container_width=True)
@@ -571,8 +590,8 @@ mas a descrição do anúncio diz "moradia de construção nova".
 """, unsafe_allow_html=True)
 
 cond_colors = {
-    "Construção nova": "#2D7D5F",
-    "Bom estado": CHART_COLORS["ocean"],
+    "Construção nova": CHART_COLORS["teal"],
+    "Bom estado": CHART_COLORS["purple"],
     "Para recuperar": CHART_COLORS["muted"],
 }
 
@@ -582,7 +601,7 @@ for _, row in cond_stats.iterrows():
     fig_cond.add_trace(go.Bar(
         x=[label],
         y=[row["median_psqm"]],
-        marker_color=cond_colors.get(label, CHART_COLORS["ocean"]),
+        marker_color=cond_colors.get(label, CHART_COLORS["purple"]),
         text=[f"€{row['median_psqm']:,.0f}/m²".replace(",", ".")],
         textposition="outside",
         textfont=dict(size=13),
@@ -597,20 +616,21 @@ for _, row in cond_stats.iterrows():
     ))
 
 fig_cond.add_hline(
-    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
+    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["amber"], line_width=2,
     annotation_text=f"Alvo: €{agent_psqm:,.0f}/m²".replace(",", "."),
-    annotation_font_color=CHART_COLORS["terra"],
+    annotation_font_color=CHART_COLORS["amber"],
     annotation_position="top left",
 )
 
 fig_cond.update_layout(
     height=350,
     showlegend=False,
-    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor="#eee"),
+    font=CHART_FONT,
+    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor=CHART_GRID),
     xaxis=dict(title=""),
     margin=dict(l=10, r=10, t=20, b=40),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
+    plot_bgcolor=CHART_BG,
+    paper_bgcolor=CHART_BG,
 )
 
 st.plotly_chart(fig_cond, use_container_width=True)
@@ -667,9 +687,9 @@ em {len(df)} imóveis. As propriedades-alvo são <strong>LSF confirmado</strong>
 
 ct_order = ["Provável LSF", "Indeterminado", "Tradicional"]
 ct_colors = {
-    "Provável LSF": CHART_COLORS["terra"],
+    "Provável LSF": CHART_COLORS["amber"],
     "Indeterminado": CHART_COLORS["muted"],
-    "Tradicional": CHART_COLORS["ocean"],
+    "Tradicional": CHART_COLORS["purple"],
 }
 
 fig_lsf = go.Figure()
@@ -696,20 +716,21 @@ for ct in ct_order:
     ))
 
 fig_lsf.add_hline(
-    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
+    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["amber"], line_width=2,
     annotation_text=f"Alvo (LSF): €{agent_psqm:,.0f}/m²".replace(",", "."),
-    annotation_font_color=CHART_COLORS["terra"],
+    annotation_font_color=CHART_COLORS["amber"],
     annotation_position="top left",
 )
 
 fig_lsf.update_layout(
     height=350,
     showlegend=False,
-    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor="#eee"),
+    font=CHART_FONT,
+    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor=CHART_GRID),
     xaxis=dict(title=""),
     margin=dict(l=10, r=10, t=20, b=40),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
+    plot_bgcolor=CHART_BG,
+    paper_bgcolor=CHART_BG,
 )
 
 st.plotly_chart(fig_lsf, use_container_width=True)
@@ -790,8 +811,8 @@ fig_nova = go.Figure()
 
 bars = [
     ("Construção nova\n(todas)", nova_all_med, len(nova_df), CHART_COLORS["muted"]),
-    ("Nova — tradicional", nova_trad_med, len(nova_trad), CHART_COLORS["ocean"]),
-    ("Nova — LSF / indet.", nova_lsf_med, len(nova_lsf_indet), CHART_COLORS["terra"]),
+    ("Nova — tradicional", nova_trad_med, len(nova_trad), CHART_COLORS["purple"]),
+    ("Nova — LSF / indet.", nova_lsf_med, len(nova_lsf_indet), CHART_COLORS["amber"]),
 ]
 
 for label, med, n, color in bars:
@@ -806,20 +827,21 @@ for label, med, n, color in bars:
     ))
 
 fig_nova.add_hline(
-    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["terra"], line_width=2,
+    y=agent_psqm, line_dash="dash", line_color=CHART_COLORS["amber"], line_width=2,
     annotation_text=f"Alvo (LSF): €{agent_psqm:,.0f}/m²".replace(",", "."),
-    annotation_font_color=CHART_COLORS["terra"],
+    annotation_font_color=CHART_COLORS["amber"],
     annotation_position="top right",
 )
 
 fig_nova.update_layout(
     height=380,
     showlegend=False,
-    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor="#eee"),
+    font=CHART_FONT,
+    yaxis=dict(title="Mediana €/m²", showgrid=True, gridcolor=CHART_GRID),
     xaxis=dict(title=""),
     margin=dict(l=10, r=10, t=20, b=60),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
+    plot_bgcolor=CHART_BG,
+    paper_bgcolor=CHART_BG,
 )
 
 st.plotly_chart(fig_nova, use_container_width=True)
@@ -865,21 +887,22 @@ fig_imp.add_trace(go.Bar(
     y=names,
     x=vals,
     orientation="h",
-    marker_color=CHART_COLORS["ocean"],
+    marker_color=CHART_COLORS["purple"],
     text=[f"{v:.1f}%" for v in vals],
     textposition="outside",
-    textfont=dict(size=12),
+    textfont=dict(size=12, color="rgba(255,255,255,0.62)"),
     hovertemplate="<b>%{y}</b><br>Importância: %{x:.1f}%<extra></extra>",
 ))
 
 fig_imp.update_layout(
     height=420,
     showlegend=False,
-    xaxis=dict(title="Importância no preço (%)", showgrid=True, gridcolor="#eee"),
+    font=CHART_FONT,
+    xaxis=dict(title="Importância no preço (%)", showgrid=True, gridcolor=CHART_GRID),
     yaxis=dict(automargin=True),
     margin=dict(l=10, r=40, t=10, b=40),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
+    plot_bgcolor=CHART_BG,
+    paper_bgcolor=CHART_BG,
 )
 
 st.plotly_chart(fig_imp, use_container_width=True)
@@ -906,7 +929,7 @@ st.markdown("""
 <p class="section-intro">
 Cada ponto é um imóvel. Se está <strong>acima</strong> da linha diagonal, o preço real é superior
 ao que o modelo prevê (sobrevalorizado). Se está <strong>abaixo</strong>, o preço é inferior ao previsto
-(subvalorizado). Os pontos <strong style="color:#C2703E">laranjas</strong> são as propriedades-alvo.
+(subvalorizado). Os pontos <strong style="color:#F0A030">âmbar</strong> são as propriedades-alvo.
 </p>
 """, unsafe_allow_html=True)
 
@@ -919,7 +942,7 @@ fig_scatter.add_trace(go.Scatter(
     x=market["predicted"],
     y=market["price_per_sqm"],
     mode="markers",
-    marker=dict(color=CHART_COLORS["ocean"], size=5, opacity=0.3),
+    marker=dict(color=CHART_COLORS["purple"], size=5, opacity=0.35),
     name="Mercado",
     hovertemplate="Previsão: €%{x:,.0f}/m²<br>Real: €%{y:,.0f}/m²<br>Diferença: %{customdata:.1f}%<extra></extra>",
     customdata=market["residual_pct"],
@@ -930,7 +953,7 @@ fig_scatter.add_trace(go.Scatter(
     x=agents["predicted"],
     y=agents["price_per_sqm"],
     mode="markers",
-    marker=dict(color=CHART_COLORS["terra"], size=14, line=dict(color="white", width=2)),
+    marker=dict(color=CHART_COLORS["amber"], size=14, line=dict(color="#0B1A1A", width=2)),
     name="Propriedades-alvo",
     hovertemplate="<b>ALVO</b><br>Previsão: €%{x:,.0f}/m²<br>Real: €%{y:,.0f}/m²<br>Diferença: %{customdata:.1f}%<extra></extra>",
     customdata=agents["residual_pct"],
@@ -940,19 +963,21 @@ max_val = min(preds[["predicted", "price_per_sqm"]].max().max() * 1.05, 15000)
 fig_scatter.add_trace(go.Scatter(
     x=[0, max_val], y=[0, max_val],
     mode="lines",
-    line=dict(color="#ccc", width=1, dash="dash"),
+    line=dict(color="rgba(255,255,255,0.15)", width=1, dash="dash"),
     showlegend=False,
     hoverinfo="skip",
 ))
 
 fig_scatter.update_layout(
     height=500,
-    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(255,255,255,0.8)"),
-    xaxis=dict(title="Previsão do modelo (€/m²)", showgrid=True, gridcolor="#f0f0f0", range=[0, max_val]),
-    yaxis=dict(title="Preço real (€/m²)", showgrid=True, gridcolor="#f0f0f0", range=[0, max_val]),
+    font=CHART_FONT,
+    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01,
+                bgcolor="rgba(15,36,36,0.8)", bordercolor="rgba(255,255,255,0.08)", borderwidth=1),
+    xaxis=dict(title="Previsão do modelo (€/m²)", showgrid=True, gridcolor=CHART_GRID, range=[0, max_val]),
+    yaxis=dict(title="Preço real (€/m²)", showgrid=True, gridcolor=CHART_GRID, range=[0, max_val]),
     margin=dict(l=10, r=10, t=10, b=40),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
+    plot_bgcolor=CHART_BG,
+    paper_bgcolor=CHART_BG,
 )
 
 st.plotly_chart(fig_scatter, use_container_width=True)
@@ -978,7 +1003,7 @@ st.markdown("## 🏘️ Propriedades comparáveis")
 st.markdown(f"""
 <p class="section-intro">
 Encontrámos <strong>{len(comps)} imóveis</strong> verdadeiramente comparáveis: dentro de 3km,
-tipologia T3 a T5, em bom estado. As linhas <strong style="color:#C2703E">destacadas</strong>
+tipologia T3 a T5, em bom estado. As linhas <strong style="color:#F0A030">destacadas</strong>
 são as propriedades-alvo. A tabela está ordenada por €/m².
 </p>
 """, unsafe_allow_html=True)
@@ -998,7 +1023,7 @@ display_comps = display_comps.drop(columns=["is_agent"])
 
 def highlight_agent(row):
     if agent_mask[row.name]:
-        return ["background-color: #fde8d8; font-weight: bold"] * len(row)
+        return ["background-color: rgba(240,160,48,0.15); font-weight: bold"] * len(row)
     return [""] * len(row)
 
 styled = display_comps.style.apply(highlight_agent, axis=1)
@@ -1023,7 +1048,7 @@ st.markdown("## 🗺️ Mapa de comparáveis")
 st.markdown("""
 <p class="section-intro">
 Localização geográfica dos imóveis comparáveis. Os pontos
-<strong style="color:#C2703E">laranjas grandes</strong> são as propriedades-alvo.
+<strong style="color:#F0A030">âmbar grandes</strong> são as propriedades-alvo.
 </p>
 """, unsafe_allow_html=True)
 
@@ -1040,7 +1065,7 @@ fig_map = scatter_fn(
     lon="longitude",
     size="size",
     color="Tipo",
-    color_discrete_map={"Propriedades-alvo": CHART_COLORS["terra"], "Mercado": CHART_COLORS["ocean"]},
+    color_discrete_map={"Propriedades-alvo": CHART_COLORS["amber"], "Mercado": CHART_COLORS["purple"]},
     hover_name="title",
     hover_data={"price_eur": ":,.0f", "Tipo": False, "size": False,
                 "latitude": False, "longitude": False},
@@ -1118,7 +1143,7 @@ para estas propriedades, o que daria um preço total de ~€{regression["agent_p
 
 st.markdown(f"""
 ---
-<div style="text-align: center; color: #999; font-size: 0.8rem; padding: 2rem 0;">
+<div style="text-align: center; color: rgba(255,255,255,0.3); font-size: 0.8rem; padding: 2rem 0; font-family: Inter, sans-serif;">
     Waldyn Imobiliário · Análise de mercado baseada em {len(df)} imóveis · Dados Idealista · Julho 2026
 </div>
 """, unsafe_allow_html=True)
