@@ -24,6 +24,7 @@ st.set_page_config(
 )
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 AGENT_IDS = [35066445, 35066465, 35066248]
 
 SINTRA_CENTER = (38.7979, -9.3817)
@@ -59,7 +60,7 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
-    .block-container { max-width: 1100px; padding-top: 2rem; }
+    .block-container { max-width: 1100px; padding-top: 4rem; }
 
     h1, h2, h3 {
         font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif !important;
@@ -430,7 +431,7 @@ CHART_BG = "rgba(0,0,0,0)"
 # DASHBOARD
 # ═══════════════════════════════════════════════════════════════════════════
 
-st.markdown("#### 🏠 Waldyn Imobiliário")
+st.image(str(ASSETS_DIR / "waldyn-wordmark.png"), width=160)
 st.markdown("# Estas casas são caras ou baratas?")
 st.markdown(f"""
 <p class="section-intro">

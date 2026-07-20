@@ -10,11 +10,13 @@ import plotly.graph_objects as go
 import plotly.express as px
 from pathlib import Path
 from weasyprint import HTML
+import base64
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 DATA_DIR = Path(__file__).resolve().parent / "data"
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 AGENT_IDS = [35066445, 35066465, 35066248]
 OUTPUT_PATH = Path(__file__).resolve().parent / "report.pdf"
 
@@ -641,7 +643,13 @@ def main():
 
     psqm_fmt = f"{agent_psqm:,.0f}".replace(",", ".")
 
+    logo_path = ASSETS_DIR / "waldyn-wordmark.png"
+    logo_b64 = base64.b64encode(logo_path.read_bytes()).decode("utf-8")
+
     sections.append(f"""
+    <div style="margin-bottom: 10pt;">
+        <img src="data:image/png;base64,{logo_b64}" style="height: 28pt;" alt="Waldyn">
+    </div>
     <h1>Estas casas são caras ou baratas?</h1>
     <p class="subtitle">
         Análise de {len(df)} imóveis à venda em Sintra/Cascais para avaliar o posicionamento
